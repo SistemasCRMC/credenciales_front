@@ -53,7 +53,7 @@ const EMPTY_CREDENTIAL_DATA: CredentialData = {
   area: "SERVICIOS MÉDICOS",
   position: "",
   delegation: "DELEGACION CANCUN",
-  vigencia: "2025",
+  vigencia: "2026",
   areaColor: areaColors["SERVICIOS MÉDICOS"],
   emergencyContact: "",
   parentesco: "",
@@ -61,7 +61,7 @@ const EMPTY_CREDENTIAL_DATA: CredentialData = {
   tipoSangre: "O+",
   alergias: "",
   curp: "",
-  miembroDesde: "", // Inicializar el nuevo campo en español
+  miembroDesde: "", 
   showPrinciples: true,
   credentialId: null,
   qrCodeUrl: undefined,
@@ -69,7 +69,7 @@ const EMPTY_CREDENTIAL_DATA: CredentialData = {
 
 interface CredentialDesignerProps {
   initialData?: CredentialData
-  onSave?: (data: CredentialData) => Promise<CredentialData | void> // Modificado para permitir Promise<void>
+  onSave?: (data: CredentialData) => Promise<CredentialData | void> 
 }
 
 const API_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001") + "/api"
