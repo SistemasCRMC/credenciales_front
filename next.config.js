@@ -1,6 +1,5 @@
+/** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath: '/credenciales',
-  assetPrefix: '/credenciales',
   images: {
     unoptimized: true,
   },
