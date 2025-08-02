@@ -54,7 +54,7 @@ const convertBackendToCredentialData = (backendData: any): CredentialData => {
     showPrinciples: true,
     credentialId: backendData.id || null,
     qrCodeUrl: backendData.qr_codigo_url || undefined, // Añadir la URL del QR
-    miembroDesde: backendData.miembro_desde || "", 
+    miembroDesde: backendData.miembro_desde || "",
   }
 }
 
@@ -137,11 +137,11 @@ const RenewalPage = () => {
         } catch (e) {
           console.error("Error al parsear user data de localStorage:", e)
           alert("Error interno: No se pudo obtener la información del usuario.")
-          return
+          throw new Error("Error al parsear datos de usuario")
         }
       } else {
         alert("No se pudo actualizar la credencial: Usuario no autenticado. Por favor, inicia sesión.")
-        return
+        throw new Error("Usuario no autenticado")
       }
 
       // Convertir los datos del frontend al formato del backend
@@ -286,4 +286,3 @@ const RenewalPage = () => {
 }
 
 export default RenewalPage
-
