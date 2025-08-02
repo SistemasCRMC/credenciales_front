@@ -54,6 +54,7 @@ const convertBackendToCredentialData = (backendData: any): CredentialData => {
     showPrinciples: true,
     credentialId: backendData.id || null,
     qrCodeUrl: backendData.qr_codigo_url || undefined, // Añadir la URL del QR
+    miembroDesde: backendData.miembro_desde || "",
   }
 }
 
