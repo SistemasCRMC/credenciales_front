@@ -13,7 +13,6 @@ import axios from "axios"
 interface Credential {
   id: string
   name: string
-  // ... other properties
 }
 
 // Añadir "/api" al final de la URL del backend
@@ -41,8 +40,8 @@ const convertBackendToCredentialData = (backendData: any): CredentialData => {
     name: backendData.nombre_completo || "",
     photo: backendData.fotografia_url || "/placeholder.svg?height=200&width=200",
     area: backendData.area || "SERVICIOS MEDICOS",
-    position: "", // Este campo no existe en el backend, se puede dejar vacío o mapear a otro campo
-    delegation: "DELEGACION CANCUN", // Valor por defecto
+    position: "",
+    delegation: "DELEGACION CANCUN",
     vigencia: backendData.vigencia || "2026",
     areaColor: backendData.color_area || "#2563eb",
     emergencyContact: backendData.contacto_emergencia || "",
@@ -53,7 +52,7 @@ const convertBackendToCredentialData = (backendData: any): CredentialData => {
     curp: backendData.curp || "",
     showPrinciples: true,
     credentialId: backendData.id || null,
-    qrCodeUrl: backendData.qr_codigo_url || undefined, // Añadir la URL del QR
+    qrCodeUrl: backendData.qr_codigo_url || undefined,
     miembroDesde: backendData.miembro_desde || "",
   }
 }
@@ -77,34 +76,25 @@ const RenewalPage = () => {
     }
 
     try {
-      console.log("Frontend: Iniciando búsqueda para el término:", term)
       const response = await axios.get(
         `${API_URL}/credentials/search?term=${encodeURIComponent(term)}`,
         getAuthHeaders(),
       )
 
-      console.log("Frontend: Respuesta del backend:", response.status, response.data)
-
       if (response.status === 200) {
-        // El backend devuelve directamente un array de credenciales
         const credentialsFound = response.data
 
         if (credentialsFound && Array.isArray(credentialsFound) && credentialsFound.length > 0) {
-          // Si se encuentra al menos una credencial, toma la primera
           const backendCredential = credentialsFound[0]
           const convertedCredential = convertBackendToCredentialData(backendCredential)
           setFoundCredential(convertedCredential)
-          console.log("Frontend: Credencial encontrada y convertida:", convertedCredential)
         } else {
           setSearchError("No se encontró ninguna credencial con ese nombre o ID.")
-          console.log("Frontend: No se encontraron credenciales para el término:", term)
         }
       } else {
         setSearchError(response.data?.message || "Error inesperado al buscar credencial.")
-        console.error("Frontend: Respuesta no 200 del backend:", response.status, response.data)
       }
     } catch (error: any) {
-      console.error("Frontend: Error al buscar credencial:", error)
       if (error.response?.data?.message) {
         setSearchError(error.response.data.message)
       } else if (error.response?.status === 401) {
@@ -121,10 +111,8 @@ const RenewalPage = () => {
     }
   }
 
-  // Función para manejar la actualización de la credencial desde el diseñador
   const handleCredentialUpdate = async (updatedData: CredentialData): Promise<CredentialData> => {
     try {
-      // Obtener datos del usuario logueado
       const userDataString = localStorage.getItem("user")
       let usuario_id: number | null = null
       let userEmail: string | null = null
@@ -137,14 +125,19 @@ const RenewalPage = () => {
         } catch (e) {
           console.error("Error al parsear user data de localStorage:", e)
           alert("Error interno: No se pudo obtener la información del usuario.")
-          return
+          return {
+            ...updatedData,
+            miembroDesde: updatedData.miembroDesde || "",
+          }
         }
       } else {
         alert("No se pudo actualizar la credencial: Usuario no autenticado. Por favor, inicia sesión.")
-        return
+        return {
+          ...updatedData,
+          miembroDesde: updatedData.miembroDesde || "",
+        }
       }
 
-      // Convertir los datos del frontend al formato del backend
       const backendData = {
         nombre_completo: updatedData.name,
         correo: userEmail || null,
@@ -157,19 +150,15 @@ const RenewalPage = () => {
         tipo_sangre: updatedData.tipoSangre || null,
         alergias: updatedData.alergias || null,
         curp: updatedData.curp || null,
-        // Solo enviar fotografia_base64 si es realmente base64 (nueva foto)
         fotografia_base64: updatedData.photo && updatedData.photo.startsWith("data:") ? updatedData.photo : null,
-        // Enviar la URL actual si no es base64 (foto existente)
         fotografia_url_current:
           updatedData.photo && updatedData.photo.startsWith("http")
             ? updatedData.photo
             : updatedData.photo === "/placeholder.svg?height=200&width=200"
-              ? null
-              : updatedData.photo,
+            ? null
+            : updatedData.photo,
         usuario_id: usuario_id,
       }
-
-      console.log("Frontend: Datos a enviar al backend para actualización:", backendData)
 
       const response = await axios.put(
         `${API_URL}/credentials/${updatedData.credentialId}`,
@@ -177,22 +166,14 @@ const RenewalPage = () => {
         getAuthHeaders(),
       )
 
-      console.log("Frontend: Respuesta de actualización:", response.data)
-
       if (response.status === 200) {
-        console.log("Credencial actualizada exitosamente")
-
-        // Crear la credencial actualizada con la nueva URL de foto y QR si cambió
         const updatedCredential = {
           ...updatedData,
           photo: response.data.fotografia_url || updatedData.photo,
-          qrCodeUrl: response.data.qr_codigo_url || updatedData.qrCodeUrl, // Actualizar QR
+          qrCodeUrl: response.data.qr_codigo_url || updatedData.qrCodeUrl,
         }
 
-        // Actualizar el estado local
         setFoundCredential(updatedCredential)
-
-        // Devolver la credencial actualizada para que printCredential pueda usarla
         return updatedCredential
       } else {
         alert("Error al actualizar la credencial: " + (response.data.message || "Error desconocido"))
@@ -209,7 +190,11 @@ const RenewalPage = () => {
         errorMessage = "Error del servidor. Intenta más tarde."
       }
       alert(errorMessage)
-      throw error // Propagar el error para que saveCredential lo maneje
+
+      return {
+        ...updatedData,
+        miembroDesde: updatedData.miembroDesde || "",
+      }
     }
   }
 
@@ -286,3 +271,4 @@ const RenewalPage = () => {
 }
 
 export default RenewalPage
+
