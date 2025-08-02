@@ -1,8 +1,9 @@
-/** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: '/credenciales',
-  output: 'standalone',
-  trailingSlash: true, // (opcional pero ayuda con recursos estáticos)
+  assetPrefix: '/credenciales',
+  images: {
+    unoptimized: true,
+  },
 };
 
 module.exports = nextConfig;
