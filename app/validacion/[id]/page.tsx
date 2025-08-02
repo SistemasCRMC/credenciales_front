@@ -29,6 +29,7 @@ interface CredentialData {
     showPrinciples: boolean
     credentialId: number | null
     estado: "emitida" | "renovada" | "deshabilitada"
+    miembroDesde: string  // agregado
 }
 
 const API_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001") + "/api"
@@ -52,6 +53,7 @@ const convertBackendToCredentialData = (backendData: any): CredentialData => {
         showPrinciples: true,
         credentialId: backendData.id || null,
         estado: backendData.estado || "emitida",
+        miembroDesde: backendData.miembro_desde || "",  // agregado
     }
 }
 
@@ -181,7 +183,7 @@ export default function ValidacionPage() {
                     <div className="bg-white rounded-lg shadow-sm border p-6">
                         <div className="flex justify-center mb-4">
                             <div className={isDisabled || isExpired ? "filter grayscale opacity-60" : ""}>
-                                <CredentialFront data={credential} />
+                                <CredentialFront data={{ ...credential, miembroDesde: credential.miembroDesde || "" }} />
                             </div>
                         </div>
 
