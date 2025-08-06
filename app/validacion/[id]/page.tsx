@@ -29,19 +29,18 @@ interface CredentialData {
     showPrinciples: boolean
     credentialId: number | null
     estado: "emitida" | "renovada" | "deshabilitada"
-    miembroDesde: string  // agregado
+    miembroDesde: string
 }
 
 const API_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001") + "/api"
 
-// Función para convertir los datos del backend al formato CredentialData
 const convertBackendToCredentialData = (backendData: any): CredentialData => {
     return {
         name: backendData.nombre_completo || "",
         photo: backendData.fotografia_url || "/placeholder.svg?height=200&width=200",
         area: backendData.area || "SERVICIOS MEDICOS",
-        position: "", // Este campo no existe en el backend
-        delegation: "DELEGACION CANCUN", // Valor por defecto
+        position: "",
+        delegation: "DELEGACION CANCUN",
         vigencia: backendData.vigencia || "2025",
         areaColor: backendData.color_area || "#2563eb",
         emergencyContact: backendData.contacto_emergencia || "",
@@ -53,7 +52,7 @@ const convertBackendToCredentialData = (backendData: any): CredentialData => {
         showPrinciples: true,
         credentialId: backendData.id || null,
         estado: backendData.estado || "emitida",
-        miembroDesde: backendData.miembro_desde || "",  // agregado
+        miembroDesde: backendData.miembro_desde || "",
     }
 }
 
@@ -86,20 +85,15 @@ export default function ValidacionPage() {
                     const currentYear = new Date().getFullYear()
                     const vigenciaYear = Number.parseInt(credentialData.vigencia)
 
-                    // Verificar si la credencial está deshabilitada
                     if (credentialData.estado === "deshabilitada") {
                         setIsDisabled(true)
                         setIsValid(false)
                         setError("Credencial deshabilitada")
-                    }
-                    // Verificar si la credencial está vencida
-                    else if (vigenciaYear < currentYear) {
+                    } else if (vigenciaYear < currentYear) {
                         setIsExpired(true)
                         setIsValid(false)
                         setError("Credencial vencida")
-                    }
-                    // Credencial válida
-                    else {
+                    } else {
                         setIsValid(true)
                         setIsDisabled(false)
                         setIsExpired(false)
@@ -137,95 +131,93 @@ export default function ValidacionPage() {
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">
-            <div className="container mx-auto px-4 max-w-2xl">
-                {/* Header simple */}
-                <div className="text-center mb-8">
-                </div>
-
-                {/* Status */}
-                <div className="mb-8">
-                    <div
-                        className={`rounded-lg p-4 text-center ${isExpired
-                            ? "bg-yellow-100 text-yellow-800"
-                            : isDisabled
-                                ? "bg-orange-100 text-orange-800"
-                                : isValid
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-red-100 text-red-800"
-                            }`}
-                    >
-                        {isExpired ? (
-                            <div className="flex items-center justify-center">
-                                <ClockIcon className="h-5 w-5 mr-2" />
-                                <span className="font-medium">Credencial Vencida</span>
-                            </div>
-                        ) : isDisabled ? (
-                            <div className="flex items-center justify-center">
-                                <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
-                                <span className="font-medium">Credencial Deshabilitada</span>
-                            </div>
-                        ) : isValid ? (
-                            <div className="flex items-center justify-center">
-                                <CheckCircleIcon className="h-5 w-5 mr-2" />
-                                <span className="font-medium">Credencial Válida</span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-center">
-                                <XCircleIcon className="h-5 w-5 mr-2" />
-                                <span className="font-medium">{error}</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Credencial */}
-                {credential && (
-                    <div className="bg-white rounded-lg shadow-sm border p-6">
-                        <div className="flex justify-center mb-4">
-                            <div className={isDisabled || isExpired ? "filter grayscale opacity-60" : ""}>
-                                <CredentialFront data={{ ...credential, miembroDesde: credential.miembroDesde || "" }} />
-                            </div>
+            {/* ✅ Estado alineado al ancho del contenido */}
+            <div className="max-w-xl mx-auto px-4 mb-8">
+                <div
+                    className={`rounded-lg p-4 text-center ${isExpired
+                        ? "bg-yellow-100 text-yellow-800"
+                        : isDisabled
+                            ? "bg-orange-100 text-orange-800"
+                            : isValid
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                        }`}
+                >
+                    {isExpired ? (
+                        <div className="flex items-center justify-center">
+                            <ClockIcon className="h-5 w-5 mr-2" />
+                            <span className="font-medium">Credencial Vencida</span>
                         </div>
+                    ) : isDisabled ? (
+                        <div className="flex items-center justify-center">
+                            <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
+                            <span className="font-medium">Credencial Deshabilitada</span>
+                        </div>
+                    ) : isValid ? (
+                        <div className="flex items-center justify-center">
+                            <CheckCircleIcon className="h-5 w-5 mr-2" />
+                            <span className="font-medium">Credencial Válida</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center">
+                            <XCircleIcon className="h-5 w-5 mr-2" />
+                            <span className="font-medium">{error}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
 
-                        {/* Info básica */}
-                        <div className="text-center space-y-2 text-sm text-gray-600">
-                            <p>
-                                <span className="font-medium">ID:</span> {credential.credentialId}
-                            </p>
-                            <p>
-                                <span className="font-medium">Vigencia:</span>{" "}
-                                <span className={isExpired ? "text-yellow-600 font-medium" : "text-gray-900"}>
-                                    {credential.vigencia}
-                                    {isExpired && " (Vencida)"}
-                                </span>
-                            </p>
-                            <p>
-                                <span className="font-medium">Estado:</span>{" "}
-                                <span
-                                    className={
-                                        isExpired
-                                            ? "text-yellow-600"
-                                            : isDisabled
-                                                ? "text-orange-600"
-                                                : credential.estado === "renovada"
-                                                    ? "text-blue-600"
-                                                    : "text-green-600"
-                                    }
-                                >
-                                    {isExpired
-                                        ? "Vencida"
-                                        : isDisabled
-                                            ? "Deshabilitada"
-                                            : credential.estado === "renovada"
-                                                ? "Renovada"
-                                                : "Vigente"}
-                                </span>
-                            </p>
+            {/* ✅ Contenedor principal con máximo ancho y centrado */}
+            <div className="container mx-auto px-4 max-w-2xl">
+                {/* 🎯 Credencial visual */}
+                {credential && (
+                    <div className="flex justify-center mb-4">
+                        {/* Si está vencida o deshabilitada, se ve en gris */}
+                        <div className={isDisabled || isExpired ? "filter grayscale opacity-60" : ""}>
+                            <CredentialFront data={{ ...credential, miembroDesde: credential.miembroDesde || "" }} />
                         </div>
                     </div>
                 )}
 
-                {/* Footer simple */}
+                {/* 📄 Info adicional */}
+                {credential && (
+                    <div className="text-center space-y-2 text-sm text-gray-600">
+                        <p>
+                            <span className="font-medium">ID:</span> {credential.credentialId}
+                        </p>
+                        <p>
+                            <span className="font-medium">Vigencia:</span>{" "}
+                            <span className={isExpired ? "text-yellow-600 font-medium" : "text-gray-900"}>
+                                {credential.vigencia}
+                                {isExpired && " (Vencida)"}
+                            </span>
+                        </p>
+                        <p>
+                            <span className="font-medium">Estado:</span>{" "}
+                            <span
+                                className={
+                                    isExpired
+                                        ? "text-yellow-600"
+                                        : isDisabled
+                                            ? "text-orange-600"
+                                            : credential.estado === "renovada"
+                                                ? "text-blue-600"
+                                                : "text-green-600"
+                                }
+                            >
+                                {isExpired
+                                    ? "Vencida"
+                                    : isDisabled
+                                        ? "Deshabilitada"
+                                        : credential.estado === "renovada"
+                                            ? "Renovada"
+                                            : "Vigente"}
+                            </span>
+                        </p>
+                    </div>
+                )}
+
+                {/* 🦶 Footer siempre abajo */}
                 <div className="text-center mt-8 text-xs text-gray-500">
                     <p>© Cruz Roja Mexicana · Delegación Cancún · Todos los derechos reservados</p>
                 </div>
