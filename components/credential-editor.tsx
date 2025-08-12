@@ -49,18 +49,22 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
 
   const allAreas = { ...areaColors, ...customAreas }
 
-  // Cargar áreas personalizadas del backend al inicializar
+  // Cargar áreas personalizadas del localStorage al inicializar
   useEffect(() => {
     loadCustomAreas()
   }, [])
 
   const loadCustomAreas = async () => {
     try {
-      // Aquí podrías hacer una llamada al backend para obtener áreas personalizadas
-      // Por ahora, las mantenemos en el estado local del componente
-      // Si quisieras persistirlas, necesitarías crear una nueva ruta API
+      // Cargar áreas personalizadas desde localStorage
+      const savedAreas = localStorage.getItem("customAreas")
+      if (savedAreas) {
+        const parsedAreas = JSON.parse(savedAreas)
+        setCustomAreas(parsedAreas)
+        console.log("Áreas personalizadas cargadas desde localStorage:", parsedAreas)
+      }
     } catch (error) {
-      console.error("Error al cargar áreas personalizadas:", error)
+      console.error("Error al cargar áreas personalizadas desde localStorage:", error)
     }
   }
 
@@ -197,6 +201,9 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
         const newAreas = { ...customAreas, [areaNameUpper]: newAreaColor }
         setCustomAreas(newAreas)
 
+        // Guardar en localStorage
+        localStorage.setItem("customAreas", JSON.stringify(newAreas))
+
         // Actualizar el área seleccionada Y forzar la actualización del color
         onUpdate("area", areaNameUpper)
         onUpdate("areaColor", newAreaColor) // Forzar actualización del color
@@ -205,12 +212,20 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
         setNewAreaColor("#dc2626")
         setIsAddingArea(false)
 
-        console.log(`Área personalizada agregada: ${areaNameUpper} - ${newAreaColor}`)
+        console.log(`Área personalizada agregada y guardada en localStorage: ${areaNameUpper} - ${newAreaColor}`)
       } catch (error) {
         console.error("Error al agregar área personalizada:", error)
-        // Aún así agregar al estado local si falla el backend
+        // Aún así agregar al estado local si falla el localStorage
         const newAreas = { ...customAreas, [areaNameUpper]: newAreaColor }
         setCustomAreas(newAreas)
+
+        // Intentar guardar en localStorage de nuevo
+        try {
+          localStorage.setItem("customAreas", JSON.stringify(newAreas))
+        } catch (storageError) {
+          console.error("Error al guardar en localStorage:", storageError)
+        }
+
         onUpdate("area", areaNameUpper)
         onUpdate("areaColor", newAreaColor) // Forzar actualización del color
         setNewAreaName("")
@@ -702,3 +717,4 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
     </div>
   )
 }
+
