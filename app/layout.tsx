@@ -9,7 +9,7 @@ export const metadata = {
   description: "Sistema de Emisión y Renovación de Credenciales para Cruz Roja Mexicana",
   generator: "v0.dev",
   icons: {
-    icon: "/favicon.ico", 
+    icon: "/Logo.ico", 
   },
 }
 
