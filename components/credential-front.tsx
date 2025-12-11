@@ -66,10 +66,11 @@ export function CredentialFront({ data, areaBlockWidth = 348 }: CredentialFrontP
 
         {/* Photo */}
         <div className="absolute top-[8.8px] left-[208px]">
-          <div className="w-[174px] h-[174px] rounded-full border-[6px] overflow-hidden bg-white flex items-center justify-center">
+          <div className="w-[174px] h-[174px] rounded-full border-[6px] overflow-hidden bg-white flex items-center justify-center"
             style={{
               borderColor: data.areaColor
             }}
+            >
             {data.photo && data.photo !== "/placeholder.svg?height=200&width=200" ? (
               <Image
                 src={data.photo || "/placeholder.svg"}
