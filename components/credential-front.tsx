@@ -116,7 +116,7 @@ export function CredentialFront({ data, areaBlockWidth = 348 }: CredentialFrontP
             width: "285px",              // ⬅️ Ancho total de la línea
             height: "6px",               // ↕️ Grosor
             marginLeft: "-17px",          // ⬅️ Controlas cuánto se corre a la derecha (crece hacia la izquierda)
-            background: `linear-gradient(to left, ${data.areaColor}, ${data.areaColor})`, // Rojo sólido
+            background: "linear-gradient(to left, ${data.areaColor}, ${data.areaColor})", // Rojo sólido
           }}
         />
 
