@@ -35,11 +35,12 @@ export function CredentialFront({ data, areaBlockWidth = 348 }: CredentialFrontP
 
       {/* Línea roja independiente y controlable */}
       <div
-        className="absolute bg-red-600 h-[5px]"
+        className="absolute h-[5px]"
         style={{
           top: "26px",     // Ajusta vertical
           left: "340px",   // Ajusta horizontal independiente
           width: "90px",
+          backgroundColor: data.areaColor, // color dinámico
         }}
       />
 
@@ -115,7 +116,7 @@ export function CredentialFront({ data, areaBlockWidth = 348 }: CredentialFrontP
             width: "285px",              // ⬅️ Ancho total de la línea
             height: "6px",               // ↕️ Grosor
             marginLeft: "-17px",          // ⬅️ Controlas cuánto se corre a la derecha (crece hacia la izquierda)
-            background: "linear-gradient(to left, ${data.areaColor}, ${data.areaColor})", // Rojo sólido
+            background: `linear-gradient(to left, ${data.areaColor}, ${data.areaColor})`, // Rojo sólido
           }}
         />
 
