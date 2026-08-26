@@ -132,7 +132,7 @@ export function LoginForm({ onRegisterClick }: LoginFormProps) {
         <Button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white shadow-md" disabled={isLoading}>
           {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
         </Button>
-        <div className="text-center text-sm">
+        {/* <div className="text-center text-sm">
           ¿No tienes una cuenta?{" "}
           <button
             type="button" // Importante: Cambiar a type="button" para evitar que envíe el formulario
@@ -142,7 +142,7 @@ export function LoginForm({ onRegisterClick }: LoginFormProps) {
           >
             Regístrate ahora
           </button>
-        </div>
+        </div> */}
       </form>
     </div>
   )

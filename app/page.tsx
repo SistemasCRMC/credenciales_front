@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { LoginForm } from "@/components/login-form"
-import { RegisterForm } from "@/components/register-form"
+// import { RegisterForm } from "@/components/register-form"
 
 export default function Home() {
   const [isFlipped, setIsFlipped] = useState(false)
@@ -66,7 +66,8 @@ export default function Home() {
             </div>
           </div>
           {/* Register Side */}
-          <div
+          
+          {/* <div
             className={`grid w-full overflow-hidden rounded-2xl shadow-2xl md:grid-cols-2 transition-all duration-800 ease-in-out absolute inset-0 ${
               isFlipped ? "opacity-100 transform translate-x-0 relative" : "opacity-0 transform translate-x-full"
             }`}
@@ -90,7 +91,7 @@ export default function Home() {
                 <RegisterForm onLoginClick={handleFlip} />
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
