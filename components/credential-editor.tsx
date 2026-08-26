@@ -1,19 +1,13 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useEffect } from "react"
-import { Input } from "@/components/ui/input"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { DocumentArrowUpIcon, PhotoIcon, PlusIcon, ShieldCheckIcon, TrashIcon, UserIcon } from "@heroicons/react/24/outline"
 import { Button } from "@/components/ui/button"
-import {
-  UserIcon,
-  ShieldCheckIcon,
-  PhotoIcon,
-  TrashIcon,
-  PlusIcon,
-  DocumentArrowUpIcon,
-} from "@heroicons/react/24/outline"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import type { CredentialData } from "@/components/credential-designer"
+import { DebouncedSearchInput } from "@/components/debounced-search-input"
 
 interface CredentialEditorProps {
   data: CredentialData
@@ -23,49 +17,118 @@ interface CredentialEditorProps {
 }
 
 interface CSVData {
+  id?: string
   nombre?: string
+  curp?: string
+  nss?: string
+  fecha?: string
   contacto_emergencia?: string
   parentesco?: string
   telefono?: string
   tipo_sangre?: string
   alergias?: string
-  curp?: string
-  miembro_desde?: string // Nuevo campo para CSV import en español
+  miembro_desde?: string
 }
-
-const API_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001") + "/api"
 
 export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }: CredentialEditorProps) {
   const [activeSection, setActiveSection] = useState<"personal" | "emergency">("personal")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const csvInputRef = useRef<HTMLInputElement>(null)
-  const [customAreas, setCustomAreas] = useState<{ [key: string]: string }>({})
+  const [customAreas, setCustomAreas] = useState<Record<string, string>>({})
   const [newAreaName, setNewAreaName] = useState("")
   const [newAreaColor, setNewAreaColor] = useState("#dc2626")
   const [isAddingArea, setIsAddingArea] = useState(false)
   const [csvData, setCsvData] = useState<CSVData[]>([])
+  const [filteredCsvData, setFilteredCsvData] = useState<CSVData[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [sortOrder, setSortOrder] = useState<"reciente" | "antiguo">("reciente")
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [selectedRow, setSelectedRow] = useState<number | null>(null)
 
   const allAreas = { ...areaColors, ...customAreas }
 
-  // Cargar áreas personalizadas del localStorage al inicializar
   useEffect(() => {
     loadCustomAreas()
   }, [])
 
+  useEffect(() => {
+    if (!isImportDialogOpen) {
+      return
+    }
+
+    const timer = setTimeout(() => {
+      const normalizedSearchTerm = searchTerm.trim().toLowerCase()
+      const indexedRows = csvData.map((row, originalIndex) => ({ row, originalIndex }))
+
+      const filteredRows = normalizedSearchTerm
+        ? indexedRows.filter(({ row }) => {
+            const searchableValues = [row.id, row.nombre, row.curp, row.nss]
+            return searchableValues.some((value) => value?.toLowerCase().includes(normalizedSearchTerm))
+          })
+        : indexedRows
+
+      filteredRows.sort((left, right) => {
+        const leftDate = parseDateValue(left.row.fecha ?? left.row.miembro_desde)
+        const rightDate = parseDateValue(right.row.fecha ?? right.row.miembro_desde)
+
+        if (Number.isNaN(leftDate) && Number.isNaN(rightDate)) {
+          return left.originalIndex - right.originalIndex
+        }
+
+        if (Number.isNaN(leftDate)) {
+          return sortOrder === "reciente" ? 1 : -1
+        }
+
+        if (Number.isNaN(rightDate)) {
+          return sortOrder === "reciente" ? -1 : 1
+        }
+
+        if (leftDate === rightDate) {
+          return left.originalIndex - right.originalIndex
+        }
+
+        return sortOrder === "reciente" ? rightDate - leftDate : leftDate - rightDate
+      })
+
+      setFilteredCsvData(filteredRows.map(({ row }) => row))
+      setSelectedRow(null)
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [csvData, isImportDialogOpen, searchTerm, sortOrder])
+
   const loadCustomAreas = async () => {
     try {
-      // Cargar áreas personalizadas desde localStorage
       const savedAreas = localStorage.getItem("customAreas")
       if (savedAreas) {
-        const parsedAreas = JSON.parse(savedAreas)
-        setCustomAreas(parsedAreas)
-        console.log("Áreas personalizadas cargadas desde localStorage:", parsedAreas)
+        setCustomAreas(JSON.parse(savedAreas))
       }
     } catch (error) {
       console.error("Error al cargar áreas personalizadas desde localStorage:", error)
     }
+  }
+
+  const parseDateValue = (value?: string) => {
+    if (!value) {
+      return Number.NaN
+    }
+
+    const directDate = new Date(value).getTime()
+    if (!Number.isNaN(directDate)) {
+      return directDate
+    }
+
+    const normalizedDate = value.replace(/^(\d{2})[/-](\d{2})[/-](\d{4})$/, "$3-$2-$1")
+    const fallbackDate = new Date(normalizedDate).getTime()
+    return Number.isNaN(fallbackDate) ? Number.NaN : fallbackDate
+  }
+
+  const resetImportDialogState = () => {
+    setCsvData([])
+    setFilteredCsvData([])
+    setSearchTerm("")
+    setSortOrder("reciente")
+    setSelectedRow(null)
   }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,6 +156,17 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
     }
   }
 
+  const handleDebouncedSearchChange = useCallback((value: string) => {
+    setSearchTerm(value)
+  }, [])
+
+  const normalizeHeader = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[¿?¡!.,;:]/g, "")
+      .toLowerCase()
+
   const parseCSV = (csvText: string) => {
     const lines = csvText.split("\n").filter((line) => line.trim() !== "")
     if (lines.length < 2) {
@@ -100,33 +174,51 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
       return
     }
 
-    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase())
+    const headers = lines[0].split(",").map((header) => normalizeHeader(header.trim()))
     const rows = lines.slice(1)
 
     const parsedData: CSVData[] = rows.map((row) => {
-      const values = row.split(",").map((v) => v.trim().replace(/"/g, ""))
+      const values = row.split(",").map((value) => value.trim().replace(/"/g, ""))
       const rowData: CSVData = {}
 
       headers.forEach((header, index) => {
         const value = values[index] || ""
 
-        // Mapear los encabezados comunes de Google Forms a nuestros campos
-        if (header.includes("nombre") || header.includes("name")) {
+        if (header.includes("id") && !header.includes("curp") && !header.includes("nss")) {
+          rowData.id = value.toUpperCase()
+        } else if (header.includes("nombre") || header.includes("name")) {
           rowData.nombre = value.toUpperCase()
+        } else if (header.includes("curp")) {
+          rowData.curp = value.toUpperCase()
+        } else if (header.includes("nss")) {
+          rowData.nss = value.toUpperCase()
+        } else if (
+          header.includes("timestamp") ||
+          header.includes("marca de tiempo") ||
+          header.includes("fecha") ||
+          header.includes("date") ||
+          header.includes("created at")
+        ) {
+          rowData.fecha = value
         } else if (header.includes("contacto") || header.includes("emergencia") || header.includes("emergency")) {
           rowData.contacto_emergencia = value.toUpperCase()
         } else if (header.includes("parentesco") || header.includes("relationship") || header.includes("relacion")) {
           rowData.parentesco = value.toUpperCase()
         } else if (header.includes("telefono") || header.includes("teléfono") || header.includes("phone")) {
-          rowData.telefono = value.replace(/\D/g, "") // Solo números
+          rowData.telefono = value.replace(/\D/g, "")
         } else if (header.includes("sangre") || header.includes("blood")) {
           rowData.tipo_sangre = value.toUpperCase()
         } else if (header.includes("alergia") || header.includes("allergy")) {
           rowData.alergias = value.toUpperCase()
-        } else if (header.includes("curp")) {
-          rowData.curp = value.toUpperCase()
-        } else if (header.includes("desde cuando eres miembro de la cruz roja") || header.includes("miembro desde")) {
-          rowData.miembro_desde = value.replace(/\D/g, "") // Solo números para el año
+        } else if (
+          header.includes("desde que ano eres miembro de la cruz roja") ||
+          header.includes("desde que ano eres miembro") ||
+          header.includes("desde que ano eres miembro de cruz roja") ||
+          header.includes("desde que ano eres miembro de la cruz roja") ||
+          header.includes("desde cuando eres miembro de la cruz roja") ||
+          header.includes("miembro desde")
+        ) {
+          rowData.miembro_desde = value.replace(/\D/g, "")
         }
       })
 
@@ -134,29 +226,37 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
     })
 
     setCsvData(parsedData)
+    setFilteredCsvData(parsedData)
+    setSearchTerm("")
+    setSortOrder("reciente")
+    setSelectedRow(null)
     setIsImportDialogOpen(true)
   }
 
   const applyCSVData = (rowIndex: number) => {
-    const selectedData = csvData[rowIndex]
-    if (selectedData) {
-      if (selectedData.nombre) onUpdate("name", selectedData.nombre)
-      if (selectedData.contacto_emergencia) onUpdate("emergencyContact", selectedData.contacto_emergencia)
-      if (selectedData.parentesco) onUpdate("parentesco", selectedData.parentesco)
-      if (selectedData.telefono) onUpdate("telefono", selectedData.telefono)
-      if (selectedData.tipo_sangre) onUpdate("tipoSangre", selectedData.tipo_sangre)
-      if (selectedData.alergias) onUpdate("alergias", selectedData.alergias)
-      if (selectedData.curp) onUpdate("curp", selectedData.curp)
-      if (selectedData.miembro_desde) onUpdate("miembroDesde", selectedData.miembro_desde) // Aplicar el nuevo campo en español
+    const selectedData = filteredCsvData[rowIndex]
+    if (!selectedData) {
+      return
+    }
 
-      setIsImportDialogOpen(false)
-      setCsvData([])
-      setSelectedRow(null)
+    if (selectedData.nombre) onUpdate("name", selectedData.nombre)
+    if (selectedData.contacto_emergencia) onUpdate("emergencyContact", selectedData.contacto_emergencia)
+    if (selectedData.parentesco) onUpdate("parentesco", selectedData.parentesco)
+    if (selectedData.telefono) onUpdate("telefono", selectedData.telefono)
+    if (selectedData.tipo_sangre) onUpdate("tipoSangre", selectedData.tipo_sangre)
+    if (selectedData.alergias) onUpdate("alergias", selectedData.alergias)
+    if (selectedData.curp) onUpdate("curp", selectedData.curp)
+    if (selectedData.miembro_desde) onUpdate("miembroDesde", selectedData.miembro_desde)
 
-      // Limpiar el input file
-      if (csvInputRef.current) {
-        csvInputRef.current.value = ""
-      }
+    setIsImportDialogOpen(false)
+    setCsvData([])
+    setFilteredCsvData([])
+    setSearchTerm("")
+    setSortOrder("reciente")
+    setSelectedRow(null)
+
+    if (csvInputRef.current) {
+      csvInputRef.current.value = ""
     }
   }
 
@@ -172,24 +272,18 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
 
   const handleAreaChange = (areaName: string) => {
     onUpdate("area", areaName)
-    const areaColor = allAreas[areaName] || "#dc2626"
-    onUpdate("areaColor", areaColor)
+    onUpdate("areaColor", allAreas[areaName] || "#dc2626")
   }
 
-  // Función para validar solo letras mayúsculas y espacios (sin números ni símbolos)
   const handleAreaNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const char = e.key
-    // Permitir teclas de control (backspace, delete, arrow keys, etc.)
     if (char.length === 1 && !/[A-ZÁÉÍÓÚÑÜa-záéíóúñü\s]/.test(char)) {
       e.preventDefault()
     }
   }
 
-  // Función para manejar cambios en el nombre del área
   const handleAreaNameChange = (value: string) => {
-    // Filtrar solo letras y espacios, convertir a mayúsculas
-    const filteredValue = value.replace(/[^A-ZÁÉÍÓÚÑÜa-záéíóúñü\s]/g, "").toUpperCase()
-    setNewAreaName(filteredValue)
+    setNewAreaName(value.replace(/[^A-ZÁÉÍÓÚÑÜa-záéíóúñü\s]/g, "").toUpperCase())
   }
 
   const addCustomArea = async () => {
@@ -197,29 +291,19 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
       const areaNameUpper = newAreaName.trim().toUpperCase()
 
       try {
-        // Agregar al estado local
         const newAreas = { ...customAreas, [areaNameUpper]: newAreaColor }
         setCustomAreas(newAreas)
-
-        // Guardar en localStorage
         localStorage.setItem("customAreas", JSON.stringify(newAreas))
-
-        // Actualizar el área seleccionada Y forzar la actualización del color
         onUpdate("area", areaNameUpper)
-        onUpdate("areaColor", newAreaColor) // Forzar actualización del color
-
+        onUpdate("areaColor", newAreaColor)
         setNewAreaName("")
         setNewAreaColor("#dc2626")
         setIsAddingArea(false)
-
-        console.log(`Área personalizada agregada y guardada en localStorage: ${areaNameUpper} - ${newAreaColor}`)
       } catch (error) {
         console.error("Error al agregar área personalizada:", error)
-        // Aún así agregar al estado local si falla el localStorage
         const newAreas = { ...customAreas, [areaNameUpper]: newAreaColor }
         setCustomAreas(newAreas)
 
-        // Intentar guardar en localStorage de nuevo
         try {
           localStorage.setItem("customAreas", JSON.stringify(newAreas))
         } catch (storageError) {
@@ -227,7 +311,7 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
         }
 
         onUpdate("area", areaNameUpper)
-        onUpdate("areaColor", newAreaColor) // Forzar actualización del color
+        onUpdate("areaColor", newAreaColor)
         setNewAreaName("")
         setNewAreaColor("#dc2626")
         setIsAddingArea(false)
@@ -235,38 +319,27 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
     }
   }
 
-  // Función para validar solo letras y espacios
   const handleLettersOnly = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const char = e.key
-    // Permitir teclas de control (backspace, delete, arrow keys, etc.)
     if (char.length === 1 && !/[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/.test(char)) {
       e.preventDefault()
     }
   }
 
-  // Función para validar solo números
   const handleNumbersOnly = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const char = e.key
-    // Permitir teclas de control y solo números
     if (char.length === 1 && !/[0-9]/.test(char)) {
       e.preventDefault()
     }
   }
 
-  // Función para manejar cambios en campos de solo letras
   const handleLettersChange = (field: keyof CredentialData, value: string) => {
-    // Filtrar solo letras, espacios y caracteres especiales del español
     const filteredValue = value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, "")
     onUpdate(field, filteredValue.toUpperCase())
   }
 
-  // Función para manejar cambios en campos de solo números
   const handleNumbersChange = (field: keyof CredentialData, value: string) => {
-    // Filtrar solo números
     const filteredValue = value.replace(/[^0-9]/g, "")
-    // Simplemente actualiza el campo con el valor filtrado.
-    // La validación de longitud se maneja con 'maxLength' en el Input.
-    // La validación de rango de años se puede hacer al guardar si es necesario.
     onUpdate(field, filteredValue)
   }
 
@@ -275,7 +348,6 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
 
   return (
     <div className="space-y-6">
-      {/* Navegación de secciones */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-1">
         <div className="flex">
           <button
@@ -309,11 +381,10 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
         </div>
       </div>
 
-      {/* Contenido de secciones */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200">
         {activeSection === "personal" && (
           <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
               <h3 className="text-lg font-semibold text-slate-900">Información Personal</h3>
               <Button
                 variant="outline"
@@ -327,79 +398,108 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
               <input ref={csvInputRef} type="file" accept=".csv" onChange={handleCSVUpload} className="hidden" />
             </div>
 
-            {/* Dialog para mostrar datos del CSV */}
-            <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Seleccionar Datos a Importar</DialogTitle>
+            <Dialog
+              open={isImportDialogOpen}
+              onOpenChange={(open) => {
+                setIsImportDialogOpen(open)
+                if (!open) {
+                  resetImportDialogState()
+                }
+              }}
+            >
+              <DialogContent className="w-[calc(100vw-1.5rem)] max-w-4xl max-h-[92vh] md:max-h-[60vh] p-0 overflow-hidden flex flex-col">
+                <DialogHeader className="px-4 pt-5 pb-2 sm:px-6 sm:pt-6 sm:pb-3 border-b">
+                  <DialogTitle className="text-center sm:text-left">Seleccionar Datos a Importar</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <p className="text-sm text-slate-600">
-                    Se encontraron {csvData.length} registros. Selecciona uno para importar:
-                  </p>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {csvData.map((row, index) => (
-                      <div
-                        key={index}
-                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                          selectedRow === index
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-slate-200 hover:border-slate-300"
-                        }`}
-                        onClick={() => setSelectedRow(index)}
+
+                <div className="px-4 sm:px-6">
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                    <DebouncedSearchInput
+                      placeholder="Buscar por ID, nombre, CURP o NSS"
+                      //debounceTime={200}debounceTime={300}
+                      onDebouncedChange={handleDebouncedSearchChange}
+                      initialValue={searchTerm}
+                    />
+                    <div className="w-full sm:w-auto flex gap-3">
+                      <select
+                        value={sortOrder}
+                        onChange={(e) => setSortOrder(e.target.value as "reciente" | "antiguo")}
+                        className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:border-red-500 focus:ring-red-500 text-sm bg-white min-w-[180px]"
                       >
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                          <div>
-                            <strong>Nombre:</strong> {row.nombre || "N/A"}
-                          </div>
-                          <div>
-                            <strong>Contacto:</strong> {row.contacto_emergencia || "N/A"}
-                          </div>
-                          <div>
-                            <strong>Parentesco:</strong> {row.parentesco || "N/A"}
-                          </div>
-                          <div>
-                            <strong>Teléfono:</strong> {row.telefono || "N/A"}
-                          </div>
-                          <div>
-                            <strong>Tipo Sangre:</strong> {row.tipo_sangre || "N/A"}
-                          </div>
-                          <div>
-                            <strong>Alergias:</strong> {row.alergias || "N/A"}
-                          </div>
-                          <div>
-                            <strong>CURP O NSS:</strong> {row.curp || "N/A"}
-                          </div>
-                          <div>
-                            <strong>Miembro Desde:</strong> {row.miembro_desde || "N/A"}
-                          </div>
+                        <option value="reciente">Más reciente primero</option>
+                        <option value="antiguo">Más antiguo primero</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                </div>
+
+                <p className="px-4 sm:px-6 text-sm text-slate-600">
+                  Se encontraron {filteredCsvData.length} registros. Selecciona uno para importar:
+                </p>
+
+                <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-2 flex-1 min-h-0 overflow-y-auto">
+                  {filteredCsvData.map((row, index) => (
+                    <div
+                      key={`${row.id ?? row.curp ?? row.nss ?? "row"}-${index}`}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        selectedRow === index ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-slate-300"
+                      }`}
+                      onClick={() => setSelectedRow(index)}
+                    >
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1 text-sm">
+                        <div>
+                          <strong>Nombre:</strong> {row.nombre || "N/A"}
+                        </div>
+                        <div>
+                          <strong>Contacto:</strong> {row.contacto_emergencia || "N/A"}
+                        </div>
+                        <div>
+                          <strong>Parentesco:</strong> {row.parentesco || "N/A"}
+                        </div>
+                        <div>
+                          <strong>Teléfono:</strong> {row.telefono || "N/A"}
+                        </div>
+                        <div>
+                          <strong>Tipo Sangre:</strong> {row.tipo_sangre || "N/A"}
+                        </div>
+                        <div>
+                          <strong>Alergias:</strong> {row.alergias || "N/A"}
+                        </div>
+                        <div>
+                          <strong>CURP o NSS:</strong> {row.curp || row.nss || "N/A"}
+                        </div>
+                        <div>
+                          <strong>Miembro Desde:</strong> {row.miembro_desde || "N/A"}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setIsImportDialogOpen(false)
-                        setCsvData([])
-                        setSelectedRow(null)
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      onClick={() => selectedRow !== null && applyCSVData(selectedRow)}
-                      disabled={selectedRow === null}
-                    >
-                      Importar Seleccionado
-                    </Button>
-                  </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="px-4 sm:px-6 py-3 border-t bg-white/95 backdrop-blur-sm sticky bottom-0 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={() => {
+                      setIsImportDialogOpen(false)
+                      resetImportDialogState()
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="w-full sm:w-auto"
+                    onClick={() => selectedRow !== null && applyCSVData(selectedRow)}
+                    disabled={selectedRow === null}
+                  >
+                    Importar Seleccionado
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
 
-            {/* Nombre */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">Nombre *</label>
               <div className="relative">
@@ -421,11 +521,10 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
                 )}
               </div>
             </div>
-            {/* Fotografía */}
+
             <div className="space-y-3">
               <label className="block text-sm font-medium text-slate-700">Fotografía *</label>
               <div className="flex items-start space-x-4">
-                {/* Preview de foto */}
                 <div className="flex-shrink-0">
                   {data.photo && data.photo !== "/placeholder.svg?height=200&width=200" ? (
                     <div className="relative group">
@@ -447,28 +546,19 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
                     </div>
                   )}
                 </div>
-                {/* Controles de foto */}
                 <div className="flex-1">
                   <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="w-full mb-2">
                     <PlusIcon className="h-4 w-4 mr-2" />
-                    {data.photo && data.photo !== "/placeholder.svg?height=200&width=200"
-                      ? "Cambiar Foto"
-                      : "Subir Foto"}
+                    {data.photo && data.photo !== "/placeholder.svg?height=200&width=200" ? "Cambiar Foto" : "Subir Foto"}
                   </Button>
                   <p className="text-xs text-slate-500">Formatos: JPG, PNG.</p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
                 </div>
               </div>
             </div>
-            {/* Área de Trabajo */}
+
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <label className="block text-sm font-medium text-slate-700">Área de Trabajo *</label>
                 <Dialog open={isAddingArea} onOpenChange={setIsAddingArea}>
                   <DialogTrigger asChild>
@@ -544,7 +634,7 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
                 <span className="text-xs text-slate-500">Color del área: {data.areaColor}</span>
               </div>
             </div>
-            {/* Vigencia */}
+
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">Vigencia</label>
               <div className="relative">
@@ -567,12 +657,13 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
             </div>
           </div>
         )}
+
         {activeSection === "emergency" && (
           <div className="p-6 space-y-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-900">Emergencias</h3>
             </div>
-            {/* Miembro Desde */}
+
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">Miembro Desde</label>
               <div className="relative">
@@ -594,7 +685,7 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
                 )}
               </div>
             </div>
-            {/* Contacto y Parentesco */}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700">Contacto de Emergencia</label>
@@ -616,6 +707,7 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
                   )}
                 </div>
               </div>
+
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700">Parentesco</label>
                 <select
@@ -632,7 +724,7 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
                 </select>
               </div>
             </div>
-            {/* Teléfono y Tipo de Sangre */}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700">Teléfono</label>
@@ -655,6 +747,7 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
                   )}
                 </div>
               </div>
+
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700">Tipo de Sangre</label>
                 <select
@@ -670,7 +763,7 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
                 </select>
               </div>
             </div>
-            {/* Alergias */}
+
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">Alergias</label>
               <div className="relative">
@@ -691,7 +784,7 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
                 )}
               </div>
             </div>
-            {/* CURP */}
+
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">CURP O NSS</label>
               <div className="relative flex-1">
@@ -717,4 +810,3 @@ export function CredentialEditor({ data, onUpdate, areaColors, onSectionChange }
     </div>
   )
 }
-
