@@ -13,7 +13,7 @@ interface DebouncedSearchInputProps {
 export function DebouncedSearchInput({
     initialValue = "",
     placeholder = "Buscar...",
-    debounceTime = 300,
+    debounceTime = 200,
     onDebouncedChange,
 }: DebouncedSearchInputProps) {
     // inputValue ahora es el estado interno del input, inicializado una vez.
@@ -21,6 +21,10 @@ export function DebouncedSearchInput({
     const [inputValue, setInputValue] = useState(initialValue)
     const [isTyping, setIsTyping] = useState(false) // Indica si el debounce está activo
     const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+    useEffect(() => {
+        setInputValue(initialValue)
+    }, [initialValue])
 
     // Este useEffect se encarga de disparar la función de cambio debounced
     useEffect(() => {
