@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { LoginForm } from "@/components/login-form"
-// import { RegisterForm } from "@/components/register-form"
+//import { RegisterForm } from "@/components/register-form"
 
 export default function Home() {
   const [isFlipped, setIsFlipped] = useState(false)

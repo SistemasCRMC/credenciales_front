@@ -142,7 +142,7 @@ export function LoginForm({ onRegisterClick }: LoginFormProps) {
           >
             Regístrate ahora
           </button>
-        </div> */}
+        </div> */} 
       </form>
     </div>
   )
