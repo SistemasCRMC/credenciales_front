@@ -48,7 +48,7 @@ const getAuthHeaders = () => {
   }
 }
 
-const RECORDS_PER_PAGE = 12
+const RECORDS_PER_PAGE = 7
 
 export default function BitacoraPage() {
   const [searchTerm, setSearchTerm] = useState("") // Término de búsqueda real (debounced)
@@ -241,22 +241,7 @@ export default function BitacoraPage() {
   return (
     <RouteGuard requiredRole="admin">
       <div className="min-h-screen bg-gray-50">
-        <DashboardHeader />
-        <main className="container mx-auto px-4 py-8">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-red-700 mb-2">Bitácora de Registros</h1>
-              <p className="text-gray-600">Consulta el historial de emisión y renovación de credenciales del sistema</p>
-            </div>
-            <Link href="/dashboard" passHref>
-              <Button variant="outline" className="bg-transparent text-red-600 hover:bg-red-50 border-red-600">
-                <ArrowLeftIcon className="h-4 w-4 mr-2" />
-                Regresar
-              </Button>
-            </Link>
-          </div>
-
+        <main className="container mx-auto px-4">
           {/* Error message */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-6">{error}</div>
