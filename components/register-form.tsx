@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import axios from "axios"
 
 interface RegisterFormProps {
-  onLoginClick: () => void
+  onLoginClick?: () => void
 }
 
 // Añadir "/api" al final de la URL del backend
@@ -98,7 +98,7 @@ export function RegisterForm({ onLoginClick }: RegisterFormProps) {
         // Si quieres que el usuario se loguee automáticamente, necesitarías modificar esa ruta.
         // Por ahora, solo se redirige al login.
         console.log("Registro exitoso, redirigiendo a login...")
-        onLoginClick() // Voltear al formulario de login
+        onLoginClick?.() // Voltear al formulario de login
       } else {
         setError(response.data.message || "Error al registrarse")
       }
