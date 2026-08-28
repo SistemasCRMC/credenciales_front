@@ -207,19 +207,8 @@ export function RegisterForm({ onLoginClick }: RegisterFormProps) {
           </div>
         </div>
         <Button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white shadow-md" disabled={isLoading}>
-          {isLoading ? "Registrando..." : "Registrarse"}
+          {isLoading ? "Registrando usuario..." : "Registrar usuario"}
         </Button>
-        <div className="text-center text-sm">
-          ¿Ya tienes una cuenta?{" "}
-          <button
-            type="button" // Importante: Cambiar a type="button" para evitar que envíe el formulario
-            onClick={onLoginClick}
-            className="font-medium text-red-600 hover:text-red-800"
-            disabled={isLoading}
-          >
-            Iniciar sesión
-          </button>
-        </div>
       </form>
     </div>
   )
