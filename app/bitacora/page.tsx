@@ -1,6 +1,5 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
-import { DashboardHeader } from "@/components/dashboard-header"
 import { RouteGuard } from "@/components/route-guard"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,12 +8,10 @@ import {
   ArrowPathIcon,
   XCircleIcon,
   CheckCircleIcon,
-  ArrowLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline"
 import axios from "axios"
-import Link from "next/link"
 import { DebouncedSearchInput } from "@/components/debounced-search-input" // Importar el nuevo componente
 
 interface LogRecord {
