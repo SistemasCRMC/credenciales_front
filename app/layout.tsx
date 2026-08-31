@@ -7,7 +7,6 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata = {
   title: "Cruz Roja Credenciales",
   description: "Sistema de Emisión y Renovación de Credenciales para Cruz Roja Mexicana",
-  generator: "v0.dev",
   icons: {
     icon: "/Logo.ico", 
   },
