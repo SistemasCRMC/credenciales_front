@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeftIcon, UserIcon } from "@heroicons/react/24/outline"
 
 import { ResetPasswordForm } from "@/components/reset-password-form"
-import BitacoraPage from "@/app/bitacora/page"
+import { UsersTable } from "@/components/users-table"
 
 export default function AdminUserManagementPage() {
     return (
@@ -46,7 +46,7 @@ export default function AdminUserManagementPage() {
                             </div>
                         </div>
                         <div className="min-w-0 overflow-hidden">
-                            <BitacoraPage />
+                            <UsersTable />
                         </div>
                     </div>
                 </main>
